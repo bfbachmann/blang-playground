@@ -336,7 +336,7 @@ impl ExecuteRequest {
         write_primary_file_request(self.crate_type, &self.code)
     }
 
-    fn execute_blang_request(&self) -> ExecuteCommandRequest {
+    fn execute_cargo_request(&self) -> ExecuteCommandRequest {
         ExecuteCommandRequest {
             cmd: "blang".to_owned(),
             args: ["run", "main.bl"].into_iter().map(|s| s.to_owned()).collect(),
@@ -969,19 +969,9 @@ where
         Ok(self.backend)
     }
 
-    async fn select_channel(&self, channel: Channel) -> Result<&Container, Error> {
-        let container = match channel {
-            Channel::Stable => &self.stable,
-            Channel::Beta => &self.beta,
-            Channel::Nightly => &self.nightly,
-        };
-
-        container
-            .get_or_try_init(|| {
-                let limits = self.limits.clone();
-                let token = self.token.clone();
-                Container::new(channel, limits, token, &self.backend)
-            })
+    async fn select_channel(&self) -> Result<&Container, Error> {
+        self.stable
+            .get_or_try_init(|| Container::new(self.token.clone(), &self.backend))
             .await
     }
 }
@@ -996,15 +986,10 @@ struct Container {
 
 impl Container {
     async fn new(
-        channel: Channel,
-        limits: Arc<dyn ResourceLimits>,
         token: CancellationToken,
         backend: &impl Backend,
     ) -> Result<Self> {
-        let permit = limits.next_container().await.context(AcquirePermitSnafu)?;
-
-        let (mut child, kill_child, stdin, stdout) =
-            backend.run_worker_in_background(channel, &permit)?;
+        let (mut child, kill_child, stdin, stdout) = backend.run_worker_in_background()?;
         let IoQueue {
             mut tasks,
             to_worker_tx,
@@ -2314,10 +2299,8 @@ pub struct TerminateContainerError {
 pub trait Backend {
     fn run_worker_in_background(
         &self,
-        channel: Channel,
-        id: impl fmt::Display,
-    ) -> Result<(Child, TerminateContainer, ChildStdin, ChildStdout)> {
-        let (mut start, kill) = self.prepare_worker_command(channel, id);
+    ) -> Result<(Child, Option<Command>, ChildStdin, ChildStdout)> {
+        let (mut start, kill) = self.prepare_worker_command();
 
         let mut child = start
             .stdin(Stdio::piped())
@@ -2330,23 +2313,15 @@ pub trait Backend {
         Ok((child, kill, stdin, stdout))
     }
 
-    fn prepare_worker_command(
-        &self,
-        channel: Channel,
-        id: impl fmt::Display,
-    ) -> (Command, TerminateContainer);
+    fn prepare_worker_command(&self) -> (Command, TerminateContainer);
 }
 
 impl<B> Backend for &B
 where
     B: Backend,
 {
-    fn prepare_worker_command(
-        &self,
-        channel: Channel,
-        id: impl fmt::Display,
-    ) -> (Command, TerminateContainer) {
-        B::prepare_worker_command(self, channel, id)
+    fn prepare_worker_command(&self) -> (Command, TerminateContainer) {
+        B::prepare_worker_command(self)
     }
 }
 
@@ -2400,11 +2375,7 @@ fn basic_secure_docker_command() -> Command {
 pub struct DockerBackend(());
 
 impl Backend for DockerBackend {
-    fn prepare_worker_command(
-        &self,
-        channel: Channel,
-        id: impl fmt::Display,
-    ) -> (Command, TerminateContainer) {
+    fn prepare_worker_command(&self) -> (Command, TerminateContainer) {
         let name = format!("playground-{id}");
 
         let mut command = basic_secure_docker_command();
@@ -2417,7 +2388,7 @@ impl Backend for DockerBackend {
             // distributed.
             .args(["-e", "PLAYGROUND_ORCHESTRATOR=1"])
             .arg("--rm")
-            .arg("bfbachmann/blang-playground")
+            .arg("bfbachmann/playground-orchestrator")
             .arg("worker")
             .arg("/playground");
 
@@ -2471,12 +2442,6 @@ pub enum Error {
 
     #[snafu(display("Failed to send worker message through channel"))]
     UnableToSendWorkerMessage { source: mpsc::error::SendError<()> },
-
-    #[snafu(display("Unable to load original Cargo.toml"))]
-    CouldNotLoadCargoToml { source: ModifyCargoTomlError },
-
-    #[snafu(display("Could not acquire a container permit"))]
-    AcquirePermit { source: ResourceError },
 }
 
 struct IoQueue {
@@ -2619,11 +2584,7 @@ mod tests {
     }
 
     impl Backend for TestBackend {
-        fn prepare_worker_command(
-            &self,
-            channel: Channel,
-            _id: impl fmt::Display,
-        ) -> (Command, TerminateContainer) {
+        fn prepare_worker_command(&self) -> (Command, TerminateContainer) {
             let channel_dir = self.project_dir.path().join(channel.to_str());
 
             let mut command = Command::new("./target/debug/worker");
