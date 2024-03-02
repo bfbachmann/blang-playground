@@ -2,24 +2,30 @@
 
 FROM ubuntu:20.04 as toolchain
 
-ARG channel
-
 ENV DEBIAN_FRONTEND="noninteractive"
+ENV LLVM_SYS_160_PREFIX=/usr/lib/llvm-16
 
 # `build-essential` and `file` are needed for backtrace-sys
-# `cmake`, `git`, `python` are needed for wasm tools
 RUN apt-get update && apt-get install -y \
     build-essential \
-    cmake \
     curl \
     file \
     gcc \
     git \
     libssl-dev \
     pkg-config \
-    python \
- && rm -rf /var/lib/apt/lists/*
+    lsb-release \
+    wget \
+    software-properties-common \
+    gnupg \
+    zlib1g-dev \
+    libzstd-dev \
+    && rm -rf /var/lib/apt/lists/*
 
+# Install LLVM 16
+RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 16 all
+
+# Add a non-root playground user
 RUN useradd -m playground -d /playground
 RUN usermod -p '!!' root # Disable all passwords for root
 
@@ -34,21 +40,21 @@ ENV USER=playground
 ENV PATH=/playground/.cargo/bin:$PATH
 WORKDIR /playground
 
-# Ensure that we are using the latest stable version of rustup and the
-# latest version of the current channel. A new manifest will trigger
-# these lines to run again, forcing a new download of rustup and
-# installation of Rust.
+# Ensure that we are using the latest stable version of rustup.
+# A new manifest will trigger these lines to run again, forcing
+# a new download of rustup and installation of Rust.
 ADD --chown=playground https://static.rust-lang.org/rustup/release-stable.toml /playground/tools/rustup-manifest.toml
-ADD --chown=playground https://static.rust-lang.org/dist/channel-rust-${channel}-date.txt /playground/tools/rust-channel-version
+ADD --chown=playground https://static.rust-lang.org/dist/channel-rust-stable-date.txt /playground/tools/rust-channel-version
 RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     -y \
     --profile minimal \
-    --default-toolchain "${channel}" \
+    --default-toolchain stable \
     --target wasm32-unknown-unknown \
-    --component rustfmt \
-    --component clippy \
     --component rust-src
-RUN if [ "${channel}" = 'nightly' ]; then rustup component add miri; fi
+
+# Download and install the Blang compiler.
+RUN git clone https://github.com/bfbachmann/blang.git
+RUN cd blang && cargo install --path . --locked
 
 COPY --chown=playground entrypoint.sh /playground/tools/
 
@@ -81,7 +87,6 @@ WORKDIR /orchestrator
 FROM chef-available as prepare-orchestrator
 
 COPY --chown=playground asm-cleanup /asm-cleanup
-COPY --chown=playground modify-cargo-toml /modify-cargo-toml
 COPY --chown=playground orchestrator /orchestrator
 RUN cargo chef prepare
 
@@ -90,10 +95,10 @@ RUN cargo chef prepare
 FROM chef-available as build-orchestrator
 
 COPY --chown=playground asm-cleanup /asm-cleanup
-COPY --chown=playground modify-cargo-toml /modify-cargo-toml
 COPY --chown=playground --from=prepare-orchestrator /orchestrator/recipe.json /orchestrator/recipe.json
 RUN cargo chef cook --locked --release
 
+COPY --chown=playground asm-cleanup /asm-cleanup
 COPY --chown=playground orchestrator /orchestrator
 RUN cargo install --locked --path .
 
@@ -101,17 +106,11 @@ RUN cargo install --locked --path .
 
 FROM sources
 
-ARG channel
-
 RUN cargo build
 RUN cargo build --release
-RUN cargo clippy
-RUN if [ "${channel}" = 'nightly' ]; then cargo miri setup; cargo miri run; fi
 RUN rm src/*.rs
 
 COPY --from=build-orchestrator /playground/.cargo/bin/worker /playground/.cargo/bin/worker
-COPY --from=wasm-tools /playground/.cargo/bin/wasm-tools /playground/.cargo/bin
-COPY --chown=playground cargo-wasm /playground/.cargo/bin
-COPY --chown=playground cargo-miri-playground /playground/.cargo/bin
+COPY --from=build-orchestrator /playground/.cargo/bin/blang /playground/.cargo/bin/blang
 
 ENTRYPOINT ["/playground/tools/entrypoint.sh"]
