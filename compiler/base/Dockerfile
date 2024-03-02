@@ -49,19 +49,14 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     -y \
     --profile minimal \
     --default-toolchain stable \
+    --target wasm32-unknown-unknown \
     --component rust-src
 
 # Download and install the Blang compiler.
-RUN git clone --depth=1 https://github.com/bfbachmann/blang.git
-RUN mv blang/std ./std && cd blang && cargo install --path . --locked
+RUN git clone https://github.com/bfbachmann/blang.git
+RUN cd blang && cargo install --path . --locked
 
 COPY --chown=playground entrypoint.sh /playground/tools/
-
-# Build wasm-tools
-
-FROM toolchain as wasm-tools
-
-RUN cargo install --locked wasm-tools
 
 # Fetch all the crate source files
 
