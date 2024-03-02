@@ -1066,6 +1066,16 @@ dependencies = [
 ]
 
 [[package]]
+||||||| parent of 67306a9 (Remove extra buttons, adapt for running Blang)
+name = "modify-cargo-toml"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_derive",
+ "toml",
+]
+
+[[package]]
 name = "nu-ansi-term"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
