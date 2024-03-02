@@ -278,19 +278,6 @@ impl Edition {
         Self::Rust2021,
         Self::Rust2024,
     ];
-
-    pub(crate) fn to_str(self) -> &'static str {
-        match self {
-            Edition::Rust2015 => "2015",
-            Edition::Rust2018 => "2018",
-            Edition::Rust2021 => "2021",
-            Edition::Rust2024 => "2024",
-        }
-    }
-
-    pub(crate) fn to_cargo_toml_key(self) -> &'static str {
-        self.to_str()
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -300,12 +287,8 @@ pub enum CrateType {
 }
 
 impl CrateType {
-    const MAIN_RS: &'static str = "src/main.rs";
+    const MAIN_RS: &'static str = "main.bl";
     const LIB_RS: &'static str = "src/lib.rs";
-
-    pub(crate) fn is_binary(self) -> bool {
-        self == CrateType::Binary
-    }
 
     pub(crate) fn primary_path(self) -> &'static str {
         match self {
@@ -318,28 +301,6 @@ impl CrateType {
         match self {
             CrateType::Binary => Self::LIB_RS,
             CrateType::Library(_) => Self::MAIN_RS,
-        }
-    }
-
-    pub(crate) fn to_cargo_toml_key(self) -> &'static str {
-        use {CrateType::*, LibraryType::*};
-
-        match self {
-            Binary => "bin",
-            Library(Lib) => "lib",
-            Library(Dylib) => "dylib",
-            Library(Rlib) => "rlib",
-            Library(Staticlib) => "staticlib",
-            Library(Cdylib) => "cdylib",
-            Library(ProcMacro) => "proc-macro",
-        }
-    }
-
-    pub(crate) fn to_library_cargo_toml_key(self) -> Option<&'static str> {
-        if self == Self::Binary {
-            None
-        } else {
-            Some(self.to_cargo_toml_key())
         }
     }
 }
@@ -375,45 +336,12 @@ impl ExecuteRequest {
     }
 
     fn execute_cargo_request(&self) -> ExecuteCommandRequest {
-        let mut args = vec![];
-
-        let cmd = match (self.tests, self.crate_type.is_binary()) {
-            (true, _) => "test",
-            (_, true) => "run",
-            (_, _) => "build",
-        };
-        args.push(cmd);
-
-        if let Mode::Release = self.mode {
-            args.push("--release");
-        }
-
-        let mut envs = HashMap::new();
-        if self.backtrace {
-            envs.insert("RUST_BACKTRACE".to_owned(), "1".to_owned());
-        }
-
         ExecuteCommandRequest {
-            cmd: "cargo".to_owned(),
-            args: args.into_iter().map(|s| s.to_owned()).collect(),
-            envs,
+            cmd: "blang".to_owned(),
+            args: ["run", "main.bl"].into_iter().map(|s| s.to_owned()).collect(),
+            envs: HashMap::new(),
             cwd: None,
         }
-    }
-}
-
-impl CargoTomlModifier for ExecuteRequest {
-    fn modify_cargo_toml(&self, mut cargo_toml: toml::Value) -> toml::Value {
-        if self.edition == Edition::Rust2024 {
-            cargo_toml = modify_cargo_toml::set_feature_edition2024(cargo_toml);
-        }
-
-        cargo_toml = modify_cargo_toml::set_edition(cargo_toml, self.edition.to_cargo_toml_key());
-
-        if let Some(crate_type) = self.crate_type.to_library_cargo_toml_key() {
-            cargo_toml = modify_cargo_toml::set_crate_type(cargo_toml, crate_type);
-        }
-        cargo_toml
     }
 }
 
@@ -525,27 +453,6 @@ impl CompileRequest {
     }
 }
 
-impl CargoTomlModifier for CompileRequest {
-    fn modify_cargo_toml(&self, mut cargo_toml: toml::Value) -> toml::Value {
-        if self.edition == Edition::Rust2024 {
-            cargo_toml = modify_cargo_toml::set_feature_edition2024(cargo_toml);
-        }
-
-        cargo_toml = modify_cargo_toml::set_edition(cargo_toml, self.edition.to_cargo_toml_key());
-
-        if let Some(crate_type) = self.crate_type.to_library_cargo_toml_key() {
-            cargo_toml = modify_cargo_toml::set_crate_type(cargo_toml, crate_type);
-        }
-
-        if CompileTarget::Wasm == self.target {
-            cargo_toml = modify_cargo_toml::remove_dependencies(cargo_toml);
-            cargo_toml = modify_cargo_toml::set_release_lto(cargo_toml, true);
-        }
-
-        cargo_toml
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct CompileResponse {
     pub success: bool,
@@ -577,21 +484,6 @@ impl FormatRequest {
             envs: Default::default(),
             cwd: None,
         }
-    }
-}
-
-impl CargoTomlModifier for FormatRequest {
-    fn modify_cargo_toml(&self, mut cargo_toml: toml::Value) -> toml::Value {
-        if self.edition == Edition::Rust2024 {
-            cargo_toml = modify_cargo_toml::set_feature_edition2024(cargo_toml);
-        }
-
-        cargo_toml = modify_cargo_toml::set_edition(cargo_toml, self.edition.to_cargo_toml_key());
-
-        if let Some(crate_type) = self.crate_type.to_library_cargo_toml_key() {
-            cargo_toml = modify_cargo_toml::set_crate_type(cargo_toml, crate_type);
-        }
-        cargo_toml
     }
 }
 
@@ -629,21 +521,6 @@ impl ClippyRequest {
     }
 }
 
-impl CargoTomlModifier for ClippyRequest {
-    fn modify_cargo_toml(&self, mut cargo_toml: toml::Value) -> toml::Value {
-        if self.edition == Edition::Rust2024 {
-            cargo_toml = modify_cargo_toml::set_feature_edition2024(cargo_toml);
-        }
-
-        cargo_toml = modify_cargo_toml::set_edition(cargo_toml, self.edition.to_cargo_toml_key());
-
-        if let Some(crate_type) = self.crate_type.to_library_cargo_toml_key() {
-            cargo_toml = modify_cargo_toml::set_crate_type(cargo_toml, crate_type);
-        }
-        cargo_toml
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ClippyResponse {
     pub success: bool,
@@ -674,21 +551,6 @@ impl MiriRequest {
             envs: Default::default(),
             cwd: None,
         }
-    }
-}
-
-impl CargoTomlModifier for MiriRequest {
-    fn modify_cargo_toml(&self, mut cargo_toml: toml::Value) -> toml::Value {
-        if self.edition == Edition::Rust2024 {
-            cargo_toml = modify_cargo_toml::set_feature_edition2024(cargo_toml);
-        }
-
-        cargo_toml = modify_cargo_toml::set_edition(cargo_toml, self.edition.to_cargo_toml_key());
-
-        if let Some(crate_type) = self.crate_type.to_library_cargo_toml_key() {
-            cargo_toml = modify_cargo_toml::set_crate_type(cargo_toml, crate_type);
-        }
-        cargo_toml
     }
 }
 
@@ -724,21 +586,6 @@ impl MacroExpansionRequest {
             envs: Default::default(),
             cwd: None,
         }
-    }
-}
-
-impl CargoTomlModifier for MacroExpansionRequest {
-    fn modify_cargo_toml(&self, mut cargo_toml: toml::Value) -> toml::Value {
-        if self.edition == Edition::Rust2024 {
-            cargo_toml = modify_cargo_toml::set_feature_edition2024(cargo_toml);
-        }
-
-        cargo_toml = modify_cargo_toml::set_edition(cargo_toml, self.edition.to_cargo_toml_key());
-
-        if let Some(crate_type) = self.crate_type.to_library_cargo_toml_key() {
-            cargo_toml = modify_cargo_toml::set_crate_type(cargo_toml, crate_type);
-        }
-        cargo_toml
     }
 }
 
@@ -860,8 +707,8 @@ where
         use versions_error::*;
 
         let [stable, beta, nightly] =
-            [Channel::Stable, Channel::Beta, Channel::Nightly].map(|c| async move {
-                let c = self.select_channel(c).await?;
+            [Channel::Stable, Channel::Beta, Channel::Nightly].map(|_| async move {
+                let c = self.select_channel().await?;
                 c.versions().await.map_err(VersionsChannelError::from)
             });
 
@@ -879,7 +726,7 @@ where
     }
 
     pub async fn crates(&self) -> Result<Vec<Crate>, CratesError> {
-        self.select_channel(Channel::Stable)
+        self.select_channel()
             .await?
             .crates()
             .await
@@ -892,7 +739,7 @@ where
     ) -> Result<WithOutput<ExecuteResponse>, ExecuteError> {
         use execute_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .execute(request)
@@ -906,7 +753,7 @@ where
     ) -> Result<ActiveExecution, ExecuteError> {
         use execute_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .begin_execute(token, request)
@@ -919,7 +766,7 @@ where
     ) -> Result<WithOutput<CompileResponse>, CompileError> {
         use compile_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .compile(request)
@@ -933,7 +780,7 @@ where
     ) -> Result<ActiveCompilation, CompileError> {
         use compile_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .begin_compile(token, request)
@@ -946,7 +793,7 @@ where
     ) -> Result<WithOutput<FormatResponse>, FormatError> {
         use format_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .format(request)
@@ -960,7 +807,7 @@ where
     ) -> Result<ActiveFormatting, FormatError> {
         use format_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .begin_format(token, request)
@@ -973,7 +820,7 @@ where
     ) -> Result<WithOutput<ClippyResponse>, ClippyError> {
         use clippy_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .clippy(request)
@@ -987,7 +834,7 @@ where
     ) -> Result<ActiveClippy, ClippyError> {
         use clippy_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .begin_clippy(token, request)
@@ -997,7 +844,7 @@ where
     pub async fn miri(&self, request: MiriRequest) -> Result<WithOutput<MiriResponse>, MiriError> {
         use miri_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .miri(request)
@@ -1011,7 +858,7 @@ where
     ) -> Result<ActiveMiri, MiriError> {
         use miri_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .begin_miri(token, request)
@@ -1024,7 +871,7 @@ where
     ) -> Result<WithOutput<MacroExpansionResponse>, MacroExpansionError> {
         use macro_expansion_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .macro_expansion(request)
@@ -1038,7 +885,7 @@ where
     ) -> Result<ActiveMacroExpansion, MacroExpansionError> {
         use macro_expansion_error::*;
 
-        self.select_channel(request.channel)
+        self.select_channel()
             .await
             .context(CouldNotStartContainerSnafu)?
             .begin_macro_expansion(token, request)
@@ -1076,15 +923,9 @@ where
         Ok(self.backend)
     }
 
-    async fn select_channel(&self, channel: Channel) -> Result<&Container, Error> {
-        let container = match channel {
-            Channel::Stable => &self.stable,
-            Channel::Beta => &self.beta,
-            Channel::Nightly => &self.nightly,
-        };
-
-        container
-            .get_or_try_init(|| Container::new(channel, self.token.clone(), &self.backend))
+    async fn select_channel(&self) -> Result<&Container, Error> {
+        self.stable
+            .get_or_try_init(|| Container::new(self.token.clone(), &self.backend))
             .await
     }
 }
@@ -1099,17 +940,15 @@ impl Coordinator<DockerBackend> {
 struct Container {
     task: JoinHandle<Result<()>>,
     kill_child: Option<Command>,
-    modify_cargo_toml: ModifyCargoToml,
     commander: Commander,
 }
 
 impl Container {
     async fn new(
-        channel: Channel,
         token: CancellationToken,
         backend: &impl Backend,
     ) -> Result<Self> {
-        let (mut child, kill_child, stdin, stdout) = backend.run_worker_in_background(channel)?;
+        let (mut child, kill_child, stdin, stdout) = backend.run_worker_in_background()?;
         let IoQueue {
             mut tasks,
             to_worker_tx,
@@ -1142,14 +981,9 @@ impl Container {
             id: Default::default(),
         };
 
-        let modify_cargo_toml = ModifyCargoToml::new(commander.clone())
-            .await
-            .context(CouldNotLoadCargoTomlSnafu)?;
-
         Ok(Container {
             task,
             kill_child,
-            modify_cargo_toml,
             commander,
         })
     }
@@ -1267,14 +1101,12 @@ impl Container {
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
-        let modify_cargo_toml = self.modify_cargo_toml.modify_for(&request);
 
-        let (delete_previous_main, write_main, modify_cargo_toml) =
-            join!(delete_previous_main, write_main, modify_cargo_toml);
+        let (delete_previous_main, write_main) =
+            join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
-        modify_cargo_toml.context(CouldNotModifyCargoTomlSnafu)?;
 
         let SpawnCargo {
             task,
@@ -1358,14 +1190,12 @@ impl Container {
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
-        let modify_cargo_toml = self.modify_cargo_toml.modify_for(&request);
 
-        let (delete_previous_main, write_main, modify_cargo_toml) =
-            join!(delete_previous_main, write_main, modify_cargo_toml);
+        let (delete_previous_main, write_main) =
+            join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
-        modify_cargo_toml.context(CouldNotModifyCargoTomlSnafu)?;
 
         let SpawnCargo {
             task,
@@ -1450,14 +1280,12 @@ impl Container {
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
-        let modify_cargo_toml = self.modify_cargo_toml.modify_for(&request);
 
-        let (delete_previous_main, write_main, modify_cargo_toml) =
-            join!(delete_previous_main, write_main, modify_cargo_toml);
+        let (delete_previous_main, write_main) =
+            join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
-        modify_cargo_toml.context(CouldNotModifyCargoTomlSnafu)?;
 
         let SpawnCargo {
             task,
@@ -1532,14 +1360,12 @@ impl Container {
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
-        let modify_cargo_toml = self.modify_cargo_toml.modify_for(&request);
 
-        let (delete_previous_main, write_main, modify_cargo_toml) =
-            join!(delete_previous_main, write_main, modify_cargo_toml);
+        let (delete_previous_main, write_main) =
+            join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
-        modify_cargo_toml.context(CouldNotModifyCargoTomlSnafu)?;
 
         let SpawnCargo {
             task,
@@ -1603,14 +1429,12 @@ impl Container {
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
-        let modify_cargo_toml = self.modify_cargo_toml.modify_for(&request);
 
-        let (delete_previous_main, write_main, modify_cargo_toml) =
-            join!(delete_previous_main, write_main, modify_cargo_toml);
+        let (delete_previous_main, write_main) =
+            join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
-        modify_cargo_toml.context(CouldNotModifyCargoTomlSnafu)?;
 
         let SpawnCargo {
             task,
@@ -1677,14 +1501,12 @@ impl Container {
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
-        let modify_cargo_toml = self.modify_cargo_toml.modify_for(&request);
 
-        let (delete_previous_main, write_main, modify_cargo_toml) =
-            join!(delete_previous_main, write_main, modify_cargo_toml);
+        let (delete_previous_main, write_main) =
+            join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
-        modify_cargo_toml.context(CouldNotModifyCargoTomlSnafu)?;
 
         let SpawnCargo {
             task,
@@ -1825,11 +1647,9 @@ impl Container {
         let Self {
             task,
             kill_child,
-            modify_cargo_toml,
             commander,
         } = self;
         drop(commander);
-        drop(modify_cargo_toml);
 
         if let Some(mut kill_child) = kill_child {
             // We don't care if the command itself succeeds or not; it
@@ -1872,9 +1692,6 @@ pub enum ExecuteError {
     #[snafu(display("Could not start the container"))]
     CouldNotStartContainer { source: Error },
 
-    #[snafu(display("Could not modify Cargo.toml"))]
-    CouldNotModifyCargoToml { source: ModifyCargoTomlError },
-
     #[snafu(display("Could not delete previous source code"))]
     CouldNotDeletePreviousCode { source: CommanderError },
 
@@ -1912,9 +1729,6 @@ impl fmt::Debug for ActiveCompilation {
 pub enum CompileError {
     #[snafu(display("Could not start the container"))]
     CouldNotStartContainer { source: Error },
-
-    #[snafu(display("Could not modify Cargo.toml"))]
-    CouldNotModifyCargoToml { source: ModifyCargoTomlError },
 
     #[snafu(display("Could not delete previous source code"))]
     CouldNotDeletePreviousCode { source: CommanderError },
@@ -1960,9 +1774,6 @@ pub enum FormatError {
     #[snafu(display("Could not start the container"))]
     CouldNotStartContainer { source: Error },
 
-    #[snafu(display("Could not modify Cargo.toml"))]
-    CouldNotModifyCargoToml { source: ModifyCargoTomlError },
-
     #[snafu(display("Could not delete previous source code"))]
     CouldNotDeletePreviousCode { source: CommanderError },
 
@@ -2007,9 +1818,6 @@ pub enum ClippyError {
     #[snafu(display("Could not start the container"))]
     CouldNotStartContainer { source: Error },
 
-    #[snafu(display("Could not modify Cargo.toml"))]
-    CouldNotModifyCargoToml { source: ModifyCargoTomlError },
-
     #[snafu(display("Could not delete previous source code"))]
     CouldNotDeletePreviousCode { source: CommanderError },
 
@@ -2048,9 +1856,6 @@ pub enum MiriError {
     #[snafu(display("Could not start the container"))]
     CouldNotStartContainer { source: Error },
 
-    #[snafu(display("Could not modify Cargo.toml"))]
-    CouldNotModifyCargoToml { source: ModifyCargoTomlError },
-
     #[snafu(display("Could not delete previous source code"))]
     CouldNotDeletePreviousCode { source: CommanderError },
 
@@ -2088,9 +1893,6 @@ impl fmt::Debug for ActiveMacroExpansion {
 pub enum MacroExpansionError {
     #[snafu(display("Could not start the container"))]
     CouldNotStartContainer { source: Error },
-
-    #[snafu(display("Could not modify Cargo.toml"))]
-    CouldNotModifyCargoToml { source: ModifyCargoTomlError },
 
     #[snafu(display("Could not delete previous source code"))]
     CouldNotDeletePreviousCode { source: CommanderError },
@@ -2143,92 +1945,6 @@ struct Commander {
     to_worker_tx: mpsc::Sender<Multiplexed<CoordinatorMessage>>,
     to_demultiplexer_tx: mpsc::Sender<(oneshot::Sender<()>, DemultiplexCommand)>,
     id: Arc<AtomicU64>,
-}
-
-trait CargoTomlModifier {
-    fn modify_cargo_toml(&self, cargo_toml: toml::Value) -> toml::Value;
-}
-
-#[derive(Debug)]
-struct ModifyCargoToml {
-    commander: Commander,
-    cargo_toml: toml::Value,
-}
-
-impl ModifyCargoToml {
-    const PATH: &'static str = "Cargo.toml";
-
-    async fn new(commander: Commander) -> Result<Self, ModifyCargoTomlError> {
-        let cargo_toml = Self::read(&commander).await?;
-        Ok(Self {
-            commander,
-            cargo_toml,
-        })
-    }
-
-    async fn modify_for(
-        &self,
-        request: &impl CargoTomlModifier,
-    ) -> Result<(), ModifyCargoTomlError> {
-        let cargo_toml = self.cargo_toml.clone();
-        let cargo_toml = request.modify_cargo_toml(cargo_toml);
-        Self::write(&self.commander, cargo_toml).await
-    }
-
-    async fn read(commander: &Commander) -> Result<toml::Value, ModifyCargoTomlError> {
-        use modify_cargo_toml_error::*;
-
-        let path = Self::PATH.to_owned();
-        let cargo_toml = commander
-            .one(ReadFileRequest { path })
-            .await
-            .context(CouldNotReadSnafu)?;
-
-        let cargo_toml = String::from_utf8(cargo_toml.0)?;
-        let cargo_toml = toml::from_str(&cargo_toml)?;
-
-        Ok(cargo_toml)
-    }
-
-    async fn write(
-        commander: &Commander,
-        cargo_toml: toml::Value,
-    ) -> Result<(), ModifyCargoTomlError> {
-        use modify_cargo_toml_error::*;
-
-        let cargo_toml = toml::to_string(&cargo_toml)?;
-        let content = cargo_toml.into_bytes();
-
-        let path = Self::PATH.to_owned();
-        commander
-            .one(WriteFileRequest { path, content })
-            .await
-            .context(CouldNotWriteSnafu)?;
-
-        Ok(())
-    }
-}
-
-#[derive(Debug, Snafu)]
-#[snafu(module)]
-pub enum ModifyCargoTomlError {
-    #[snafu(display("Could not read the file"))]
-    CouldNotRead { source: CommanderError },
-
-    #[snafu(display("Could not parse the file as UTF-8"))]
-    #[snafu(context(false))]
-    InvalidUtf8 { source: std::string::FromUtf8Error },
-
-    #[snafu(display("Could not deserialize the file as TOML"))]
-    #[snafu(context(false))]
-    CouldNotDeserialize { source: toml::de::Error },
-
-    #[snafu(display("Could not serialize the file as TOML"))]
-    #[snafu(context(false))]
-    CouldNotSerialize { source: toml::ser::Error },
-
-    #[snafu(display("Could not write the file"))]
-    CouldNotWrite { source: CommanderError },
 }
 
 struct MultiplexedSender {
@@ -2448,9 +2164,8 @@ pub enum CommanderError {
 pub trait Backend {
     fn run_worker_in_background(
         &self,
-        channel: Channel,
     ) -> Result<(Child, Option<Command>, ChildStdin, ChildStdout)> {
-        let (mut start, kill) = self.prepare_worker_command(channel);
+        let (mut start, kill) = self.prepare_worker_command();
 
         let mut child = start
             .stdin(Stdio::piped())
@@ -2463,15 +2178,15 @@ pub trait Backend {
         Ok((child, kill, stdin, stdout))
     }
 
-    fn prepare_worker_command(&self, channel: Channel) -> (Command, Option<Command>);
+    fn prepare_worker_command(&self) -> (Command, Option<Command>);
 }
 
 impl<B> Backend for &B
 where
     B: Backend,
 {
-    fn prepare_worker_command(&self, channel: Channel) -> (Command, Option<Command>) {
-        B::prepare_worker_command(self, channel)
+    fn prepare_worker_command(&self) -> (Command, Option<Command>) {
+        B::prepare_worker_command(self)
     }
 }
 
@@ -2543,7 +2258,7 @@ impl DockerBackend {
 }
 
 impl Backend for DockerBackend {
-    fn prepare_worker_command(&self, channel: Channel) -> (Command, Option<Command>) {
+    fn prepare_worker_command(&self) -> (Command, Option<Command>) {
         let name = self.next_name();
 
         let mut command = basic_secure_docker_command();
@@ -2553,7 +2268,7 @@ impl Backend for DockerBackend {
             .args(["-a", "stdin", "-a", "stdout", "-a", "stderr"])
             .args(["-e", "PLAYGROUND_ORCHESTRATOR=1"])
             .arg("--rm")
-            .arg(channel.to_container_name())
+            .arg("bfbachmann/playground-orchestrator")
             .arg("worker")
             .arg("/playground");
 
@@ -2561,16 +2276,6 @@ impl Backend for DockerBackend {
         kill.arg("kill").args(["--signal", "KILL"]).arg(name);
 
         (command, Some(kill))
-    }
-}
-
-impl Channel {
-    fn to_container_name(self) -> &'static str {
-        match self {
-            Channel::Stable => "rust-stable",
-            Channel::Beta => "rust-beta",
-            Channel::Nightly => "rust-nightly",
-        }
     }
 }
 
@@ -2616,9 +2321,6 @@ pub enum Error {
 
     #[snafu(display("Failed to send worker message through channel"))]
     UnableToSendWorkerMessage { source: mpsc::error::SendError<()> },
-
-    #[snafu(display("Unable to load original Cargo.toml"))]
-    CouldNotLoadCargoToml { source: ModifyCargoTomlError },
 }
 
 struct IoQueue {
@@ -2763,7 +2465,7 @@ mod tests {
     }
 
     impl Backend for TestBackend {
-        fn prepare_worker_command(&self, channel: Channel) -> (Command, Option<Command>) {
+        fn prepare_worker_command(&self) -> (Command, Option<Command>) {
             let channel_dir = self.project_dir.path().join(channel.to_str());
 
             let mut command = Command::new("./target/debug/worker");

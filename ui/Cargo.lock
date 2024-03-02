@@ -919,15 +919,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "modify-cargo-toml"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_derive",
- "toml",
-]
-
-[[package]]
 name = "nu-ansi-term"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1051,7 +1042,6 @@ dependencies = [
  "futures",
  "libc",
  "mach2",
- "modify-cargo-toml",
  "once_cell",
  "procfs",
  "serde",
