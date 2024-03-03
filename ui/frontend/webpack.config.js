@@ -149,7 +149,7 @@ module.exports = function(_, argv) {
         ACE_THEMES: JSON.stringify(allThemes),
       }),
       new HtmlPlugin({
-        title: "Rust Playground",
+        title: "Blang Playground",
         template: 'index.ejs',
         filename: '../index.html',
       }),

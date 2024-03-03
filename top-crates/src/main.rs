@@ -66,7 +66,7 @@ fn main() {
         package: TomlPackage {
             name: "playground".to_owned(),
             version: "0.0.1".to_owned(),
-            authors: vec!["The Rust Playground".to_owned()],
+            authors: vec!["The Blang Playground".to_owned()],
             resolver: "2".to_owned(),
         },
         profile: Profiles {

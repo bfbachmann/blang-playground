@@ -1,4 +1,4 @@
-# Hello, and thanks for looking into the Rust Playground's security!
+# Hello, and thanks for looking into the Blang Playground's security!
 #
 # This build is running on an unprivileged, sandboxed Docker container with no
 # network access, so while you can technically run arbitrary code on the
