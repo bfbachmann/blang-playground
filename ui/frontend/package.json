@@ -1,7 +1,7 @@
 {
   "name": "ui",
   "version": "0.0.1",
-  "description": "UI for the Rust playground",
+  "description": "UI for the Blang Playground",
   "main": "index.js",
   "dependencies": {
     "@floating-ui/react": "^0.26.2",

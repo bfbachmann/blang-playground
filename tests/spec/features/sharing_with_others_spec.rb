@@ -53,7 +53,7 @@ RSpec.feature "Sharing the code with others", :external, type: :feature, js: tru
 
   def code
     <<~EOF
-      // This code was saved by an automated test for the Rust Playground
+      // This code was saved by an automated test for the Blang Playground
     EOF
   end
 end
