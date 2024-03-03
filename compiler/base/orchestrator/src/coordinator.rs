@@ -336,7 +336,7 @@ impl ExecuteRequest {
         write_primary_file_request(self.crate_type, &self.code)
     }
 
-    fn execute_cargo_request(&self) -> ExecuteCommandRequest {
+    fn execute_blang_request(&self) -> ExecuteCommandRequest {
         ExecuteCommandRequest {
             cmd: "blang".to_owned(),
             args: ["run", "main.bl"].into_iter().map(|s| s.to_owned()).collect(),
@@ -393,7 +393,7 @@ impl CompileRequest {
         write_primary_file_request(self.crate_type, &self.code)
     }
 
-    pub(crate) fn execute_cargo_request(&self, output_path: &str) -> ExecuteCommandRequest {
+    pub(crate) fn execute_blang_request(&self, output_path: &str) -> ExecuteCommandRequest {
         use CompileTarget::*;
 
         let mut args = if let Wasm = self.target {
@@ -478,7 +478,7 @@ impl FormatRequest {
         write_primary_file_request(self.crate_type, &self.code)
     }
 
-    pub(crate) fn execute_cargo_request(&self) -> ExecuteCommandRequest {
+    pub(crate) fn execute_blang_request(&self) -> ExecuteCommandRequest {
         ExecuteCommandRequest {
             cmd: "cargo".to_owned(),
             args: vec!["fmt".to_owned()],
@@ -512,7 +512,7 @@ impl ClippyRequest {
         write_primary_file_request(self.crate_type, &self.code)
     }
 
-    pub(crate) fn execute_cargo_request(&self) -> ExecuteCommandRequest {
+    pub(crate) fn execute_blang_request(&self) -> ExecuteCommandRequest {
         ExecuteCommandRequest {
             cmd: "cargo".to_owned(),
             args: vec!["clippy".to_owned()],
@@ -545,7 +545,7 @@ impl MiriRequest {
         write_primary_file_request(self.crate_type, &self.code)
     }
 
-    pub(crate) fn execute_cargo_request(&self) -> ExecuteCommandRequest {
+    pub(crate) fn execute_blang_request(&self) -> ExecuteCommandRequest {
         ExecuteCommandRequest {
             cmd: "cargo".to_owned(),
             args: vec!["miri-playground".to_owned()],
@@ -578,7 +578,7 @@ impl MacroExpansionRequest {
         write_primary_file_request(self.crate_type, &self.code)
     }
 
-    pub(crate) fn execute_cargo_request(&self) -> ExecuteCommandRequest {
+    pub(crate) fn execute_blang_request(&self) -> ExecuteCommandRequest {
         ExecuteCommandRequest {
             cmd: "cargo".to_owned(),
             args: ["rustc", "--", "-Zunpretty=expanded"]
@@ -1163,7 +1163,7 @@ impl Container {
 
         let delete_previous_main = request.delete_previous_main_request();
         let write_main = request.write_main_request();
-        let execute_cargo = request.execute_cargo_request();
+        let execute_cargo = request.execute_blang_request();
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
@@ -1252,7 +1252,7 @@ impl Container {
 
         let delete_previous_main = request.delete_previous_main_request();
         let write_main = request.write_main_request();
-        let execute_cargo = request.execute_cargo_request(output_path);
+        let execute_cargo = request.execute_blang_request(output_path);
         let read_output = ReadFileRequest {
             path: output_path.to_owned(),
         };
@@ -1345,7 +1345,7 @@ impl Container {
 
         let delete_previous_main = request.delete_previous_main_request();
         let write_main = request.write_main_request();
-        let execute_cargo = request.execute_cargo_request();
+        let execute_cargo = request.execute_blang_request();
         let read_output = ReadFileRequest {
             path: request.crate_type.primary_path().to_owned(),
         };
@@ -1431,7 +1431,7 @@ impl Container {
 
         let delete_previous_main = request.delete_previous_main_request();
         let write_main = request.write_main_request();
-        let execute_cargo = request.execute_cargo_request();
+        let execute_cargo = request.execute_blang_request();
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
@@ -1503,7 +1503,7 @@ impl Container {
 
         let delete_previous_main = request.delete_previous_main_request();
         let write_main = request.write_main_request();
-        let execute_cargo = request.execute_cargo_request();
+        let execute_cargo = request.execute_blang_request();
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
@@ -1578,7 +1578,7 @@ impl Container {
 
         let delete_previous_main = request.delete_previous_main_request();
         let write_main = request.write_main_request();
-        let execute_cargo = request.execute_cargo_request();
+        let execute_cargo = request.execute_blang_request();
 
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
