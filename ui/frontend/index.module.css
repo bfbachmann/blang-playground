@@ -6,6 +6,11 @@
   --secondary-font-size: calc(0.75 * var(--primary-font-size));
 
   /* Header */
+  --blang: #6b34eb;
+  --blang-dark: #290691;
+  --border-color: #bbb;
+  --border: 1px solid var(--border-color);
+  --header-main-border: #dedede;
   --header-transition: 0.2s ease-in-out;
   --header-border-radius: 4px;
 
@@ -41,10 +46,10 @@
   --header-tint: #428bca;
   --header-accent-border: #bdbdbd;
 
-  /* The big red button */
+  /* The big purple button */
   --button-primary-color: var(--positive-luminance);
-  --button-primary-bg-color: #a42;
-  --button-primary-border-color: #80331a;
+  --button-primary-bg-color: #6936cf;
+  --button-primary-border-color: #2b1785;
   --button-primary-bg-color-light: color-mix(
     in hsl,
     var(--button-primary-bg-color),
@@ -63,7 +68,7 @@
     var(--negative-luminance) 30%
   );
 
-  /* Not the big red button */
+  /* Not the big purple button */
   --button-secondary-color: #444;
   --button-secondary-bg-color-top: #fff;
   --button-secondary-bg-color-bottom: #f9f9f9;
