@@ -114,7 +114,7 @@ impl Modifications {
 
 fn simple_get(url: &str) -> reqwest::Result<reqwest::blocking::Response> {
     reqwest::blocking::ClientBuilder::new()
-        .user_agent("Rust Playground - Top Crates Utility")
+        .user_agent("Blang Playground - Top Crates Utility")
         .build()?
         .get(url)
         .send()

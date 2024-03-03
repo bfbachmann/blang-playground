@@ -4,7 +4,7 @@ import { performFormat } from './output/format';
 import { performGistLoad } from './output/gist';
 
 const initialState: string = `fn main() {
-    println!("Hello, world!");
+    puts("Hello, world!")
 }`;
 
 const slice = createSlice({

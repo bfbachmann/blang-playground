@@ -1,6 +1,6 @@
-# Rust Playground
+# Blang Playground
 
-This is the home of the [Rust Playground][real],
+This is the home of the [Blang Playground][real],
 also [hosted by Integer 32][us].
 
 [real]: https://play.rust-lang.org/

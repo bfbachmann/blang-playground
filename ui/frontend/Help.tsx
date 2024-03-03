@@ -78,7 +78,7 @@ fn main() {
 const Help: React.FC = () => {
   return (
     <section className={styles.container}>
-      <h1>The Rust Playground</h1>
+      <h1>The Blang Playground</h1>
       <Link action={navigateToIndex}>Return to the playground</Link>
 
       <LinkableSection id="about" header="About" level="h2">
@@ -91,7 +91,7 @@ const Help: React.FC = () => {
 
         <p>
           This playground is modeled after the <a href={ORIGINAL_PLAYGROUND_URL}>original
-        Rust playground</a>, and we owe a great debt to every contributor to
+        Blang Playground</a>, and we owe a great debt to every contributor to
                                       that project.
         </p>
 
