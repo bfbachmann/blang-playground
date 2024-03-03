@@ -1,7 +1,7 @@
 :root {
   --primary-font: 'Open Sans', sans-serif;
-  --rust: #a42;
-  --rust-dark: #80331a;
+  --blang: #6b34eb;
+  --blang-dark: #290691;
   --border-color: #bbb;
   --border: 1px solid var(--border-color);
   --header-main-border: #dedede;
@@ -13,8 +13,8 @@
   /* The big red button */
 
   --button-primary-color: white;
-  --button-primary-bg-color: var(--rust);
-  --button-primary-border-color: var(--rust-dark);
+  --button-primary-bg-color: var(--blang);
+  --button-primary-border-color: var(--blang-dark);
   --button-primary-bg-color-light: color-mix(in hsl, var(--button-primary-bg-color), white);
   --button-primary-border-color-light: color-mix(in hsl, var(--button-primary-border-color), white);
 
@@ -70,7 +70,7 @@ html {
 }
 
 body {
-  background-color: #e1e1db;
+  /*background-color: #e1e1db;*/
   padding: 0 1em;
   font-family: var(--primary-font);
 }

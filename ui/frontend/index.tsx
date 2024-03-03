@@ -19,8 +19,6 @@ import { featureFlagsForceDisableAll, featureFlagsForceEnableAll } from './reduc
 import { disableSyncChangesToStorage, override } from './reducers/globalConfiguration';
 import Router from './Router';
 import configureStore from './configureStore';
-import { performVersionsLoad } from './reducers/versions';
-import { performCratesLoad } from './reducers/crates';
 import { gotoPosition } from './reducers/position';
 import { addImport, editCode, enableFeatureGate } from './reducers/code';
 import { browserWidthChanged } from './reducers/browser';

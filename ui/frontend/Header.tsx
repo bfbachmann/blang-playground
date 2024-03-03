@@ -26,9 +26,9 @@ const Header: React.FC = () => {
         </div>
 
         <div className={styles.right}>
-          <ButtonSet>
-            <ShareButton />
-          </ButtonSet>
+          {/*<ButtonSet>*/}
+          {/*  <ShareButton />*/}
+          {/*</ButtonSet>*/}
 
           <ButtonSet>
             <HelpButton />
