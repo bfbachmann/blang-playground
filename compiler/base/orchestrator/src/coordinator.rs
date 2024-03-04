@@ -2371,7 +2371,7 @@ impl Backend for DockerBackend {
             // distributed.
             .args(["-e", "PLAYGROUND_ORCHESTRATOR=1"])
             .arg("--rm")
-            .arg("bfbachmann/playground-orchestrator")
+            .arg("bfbachmann/blang-playground")
             .arg("worker")
             .arg("/playground");
 
