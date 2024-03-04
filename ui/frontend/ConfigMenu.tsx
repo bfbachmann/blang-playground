@@ -8,12 +8,9 @@ import { useAppDispatch, useAppSelector } from './hooks';
 
 import * as config from './reducers/configuration';
 import {
-  AssemblyFlavor,
-  DemangleAssembly,
   Editor,
   Orientation,
   PairCharacters,
-  ProcessAssembly,
   Theme,
 } from './types';
 
@@ -29,9 +26,6 @@ const ConfigMenu: React.FC = () => {
   const orientation = useAppSelector((state) => state.configuration.orientation);
   const editorStyle = useAppSelector((state) => state.configuration.editor);
   const pairCharacters = useAppSelector((state) => state.configuration.ace.pairCharacters);
-  const assemblyFlavor = useAppSelector((state) => state.configuration.assemblyFlavor);
-  const demangleAssembly = useAppSelector((state) => state.configuration.demangleAssembly);
-  const processAssembly = useAppSelector((state) => state.configuration.processAssembly);
 
   const dispatch = useAppDispatch();
   const changeAceTheme = useCallback((t: string) => dispatch(config.changeAceTheme(t)), [dispatch]);
@@ -40,14 +34,8 @@ const ConfigMenu: React.FC = () => {
   const changeTheme = useCallback((t: Theme) => dispatch(config.changeTheme(t)), [dispatch]);
   const changeOrientation = useCallback((o: Orientation) => dispatch(config.changeOrientation(o)), [dispatch]);
   const changeEditorStyle = useCallback((e: Editor) => dispatch(config.changeEditor(e)), [dispatch]);
-  const changeAssemblyFlavor =
-    useCallback((a: AssemblyFlavor) => dispatch(config.changeAssemblyFlavor(a)), [dispatch]);
   const changePairCharacters =
     useCallback((p: PairCharacters) => dispatch(config.changePairCharacters(p)), [dispatch]);
-  const changeProcessAssembly =
-    useCallback((p: ProcessAssembly) => dispatch(config.changeProcessAssembly(p)), [dispatch]);
-  const changeDemangleAssembly =
-    useCallback((d: DemangleAssembly) => dispatch(config.changeDemangleAssembly(d)), [dispatch]);
 
   return (
     <Fragment>
@@ -116,40 +104,6 @@ const ConfigMenu: React.FC = () => {
           <option value={Orientation.Horizontal}>Horizontal</option>
           <option value={Orientation.Vertical}>Vertical</option>
         </SelectConfig>
-      </MenuGroup>
-
-      <MenuGroup title="Assembly">
-        <EitherConfig
-          id="assembly-flavor"
-          name="Flavor"
-          a={AssemblyFlavor.Att}
-          b={AssemblyFlavor.Intel}
-          aLabel="AT&T"
-          bLabel="Intel"
-          value={assemblyFlavor}
-          onChange={changeAssemblyFlavor} />
-
-        <EitherConfig
-          id="assembly-symbols"
-          name="Symbol Demangling"
-          a={DemangleAssembly.Demangle}
-          b={DemangleAssembly.Mangle}
-          aLabel="On"
-          bLabel="Off"
-          value={demangleAssembly}
-          onChange={changeDemangleAssembly}
-        />
-
-        <EitherConfig
-          id="assembly-view"
-          name="Name Filtering"
-          a={ProcessAssembly.Filter}
-          b={ProcessAssembly.Raw}
-          aLabel="On"
-          bLabel="Off"
-          value={processAssembly}
-          onChange={changeProcessAssembly}
-        />
       </MenuGroup>
     </Fragment>
   );

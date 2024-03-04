@@ -98,10 +98,6 @@ export enum PrimaryActionCore {
   Compile = 'compile',
   Execute = 'execute',
   LlvmIr = 'llvm-ir',
-  Hir = 'hir',
-  Mir = 'mir',
-  Test = 'test',
-  Wasm = 'wasm',
 }
 
 export type PrimaryAction = PrimaryActionCore | PrimaryActionAuto;
