@@ -6,10 +6,73 @@ import * as styles from './Help.module.css';
 
 import { navigateToIndex } from './reducers/page';
 
+const ACE_URL = 'https://github.com/ajaxorg/ace';
+const CLIPPY_URL = 'https://github.com/rust-lang/rust-clippy';
+const MIRI_URL = 'https://github.com/rust-lang/miri';
+const CRATES_IO_URL = 'https://crates.io/';
+const RUST_COOKBOOK_URL = 'https://rust-lang-nursery.github.io/rust-cookbook/';
+const CRATES_URL = 'https://github.com/rust-lang/rust-playground/blob/main/compiler/base/Cargo.toml';
+const GIST_URL = 'https://gist.github.com/';
+const I32_URL = 'http://integer32.com/';
+const LOCALSTORAGE_URL = 'https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API';
 const ORIGINAL_PLAYGROUND_URL = 'https://github.com/rust-lang/rust-playground';
 const REPO_URL = 'https://github.com/bfbachmann/blang-playground';
 const BLANG_DOCS_URL = 'https://github.com/bfbachmann/blang/tree/master/docs';
-const STD_LIB_URL = 'https://github.com/bfbachmann/blang/tree/master/std';
+const RUSTFMT_URL = 'https://github.com/rust-lang/rustfmt';
+const SHEPMASTER_URL = 'https://github.com/shepmaster/';
+const RUST_EDITION_2018_URL = 'https://doc.rust-lang.org/edition-guide/rust-2018/index.html';
+
+const CRATE_EXAMPLE = `use rand::Rng;
+
+fn main() {
+    let mut rng = rand::thread_rng();
+    println!("{}", rng.gen::<u8>());
+}`;
+
+const CLIPPY_EXAMPLE = `fn main() {
+    match true {
+        true => println!("true"),
+        false => println!("false"),
+    }
+}`;
+
+const MIRI_EXAMPLE = `fn main() {
+    let mut a: [u8; 0] = [];
+    unsafe {
+        *a.get_unchecked_mut(1) = 1;
+    }
+}`;
+
+const RUSTFMT_EXAMPLE = `// wow, this is ugly!
+fn main ()
+{ struct Foo { a: u8, b: String, }
+match 4 {2=>{},_=>{}} }`;
+
+const LINK_EXAMPLE = 'https://play.integer32.com/?code=fn main() { println!("hello world!"); }';
+
+const TEST_EXAMPLE = `#[test]
+fn test_something() {
+    assert_ne!(42, 0);
+}`;
+
+const LIBRARY_EXAMPLE = `#![crate_type="lib"]
+
+pub fn library_fn() -> u8 {
+    42
+}`;
+
+const OUTPUT_EXAMPLE = `#[inline(never)]
+pub fn a_loop() -> i32 {
+    let mut sum = 0;
+    for i in 0..100 {
+        sum += i;
+    }
+    sum
+}
+
+fn main() {
+    println!("{}", a_loop());
+}`;
 
 const Help: React.FC = () => {
   return (
@@ -33,13 +96,6 @@ const Help: React.FC = () => {
       <LinkableSection id="about" header="Language Documentation" level="h2">
         <p>
           High-level language documentation can be found in the <a href={BLANG_DOCS_URL}>Blang repository</a>.
-        </p>
-
-      </LinkableSection>
-
-      <LinkableSection id="about" header="Imports" level="h2">
-        <p>
-          For now, only modules from the <a href={STD_LIB_URL}>standard library</a> can be imported in the playground.
         </p>
 
       </LinkableSection>
