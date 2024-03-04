@@ -1,13 +1,18 @@
-import React, { useCallback, useRef } from 'react';
+import React, { RefObject, useCallback, useRef } from 'react';
 
-import { ButtonSet, IconLink, Button as OneButton } from './ButtonSet';
+import BuildMenu from './BuildMenu';
+import { ButtonSet, IconButton, IconLink, Button as OneButton } from './ButtonSet';
+import ConfigMenu from './ConfigMenu';
 import {
   BuildIcon,
+  ConfigIcon,
+  ExpandableIcon,
   HelpIcon,
+  MoreOptionsIcon,
 } from './Icon';
+import PopButton, { ButtonProps } from './PopButton';
 import * as actions from './actions';
 import { useAppDispatch, useAppSelector } from './hooks';
-import { performGistSave } from './reducers/output/gist';
 import { navigateToHelp } from './reducers/page';
 import * as selectors from './selectors';
 
@@ -22,13 +27,14 @@ const Header: React.FC = () => {
         <div className={styles.left}>
           <ButtonSet>
             <ExecuteButton />
+            <BuildMenuButton menuContainer={menuContainer} />
           </ButtonSet>
         </div>
 
         <div className={styles.right}>
-          {/*<ButtonSet>*/}
-          {/*  <ShareButton />*/}
-          {/*</ButtonSet>*/}
+          <ButtonSet>
+            <ConfigMenuButton menuContainer={menuContainer} />
+          </ButtonSet>
 
           <ButtonSet>
             <HelpButton />
@@ -40,6 +46,10 @@ const Header: React.FC = () => {
     </>
   );
 };
+
+interface PortalProps {
+  menuContainer: RefObject<HTMLDivElement>;
+}
 
 const ExecuteButton: React.FC = () => {
   const executionLabel = useAppSelector(selectors.getExecutionLabel);
@@ -54,15 +64,33 @@ const ExecuteButton: React.FC = () => {
   );
 };
 
-const ShareButton: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const gistSave = useCallback(() => dispatch(performGistSave()), [dispatch]);
+const BuildMenuButton: React.FC<PortalProps> = ({ menuContainer }) => {
+  const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ toggle }, ref) => (
+      <IconButton type="button" title="Select what to build" ref={ref} onClick={toggle}>
+        <MoreOptionsIcon />
+      </IconButton>
+  ));
+  Button.displayName = 'BuildMenuButton.Button';
 
-  return (
-    <OneButton type="button" title="Create shareable links to this code" onClick={gistSave}>
-      Share
-    </OneButton>
-  );
+  return <PopButton Button={Button} Menu={BuildMenu} menuContainer={menuContainer} />;
+};
+
+const ConfigMenuButton: React.FC<PortalProps> = ({ menuContainer }) => {
+  const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ toggle }, ref) => (
+      <OneButton
+          type="button"
+          title="Show the configuration options"
+          ref={ref}
+          onClick={toggle}
+          iconLeft={ConfigIcon}
+          iconRight={ExpandableIcon}
+      >
+        Config
+      </OneButton>
+  ));
+  Button.displayName = 'ConfigMenuButton.Button';
+
+  return <PopButton Button={Button} Menu={ConfigMenu} menuContainer={menuContainer} />;
 };
 
 const HelpButton: React.FC = () => (

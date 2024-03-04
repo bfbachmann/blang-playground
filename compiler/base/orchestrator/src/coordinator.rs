@@ -396,14 +396,7 @@ impl CompileRequest {
     pub(crate) fn execute_blang_request(&self, output_path: &str) -> ExecuteCommandRequest {
         use CompileTarget::*;
 
-        let mut args = if let Wasm = self.target {
-            vec!["wasm"]
-        } else {
-            vec!["rustc"]
-        };
-        if let Mode::Release = self.mode {
-            args.push("--release");
-        }
+        let mut args = vec!["build", "main.bl", "-o", output_path, "-f"];
 
         match self.target {
             Assembly(flavor, _, _) => {
@@ -432,9 +425,9 @@ impl CompileRequest {
         }
 
         ExecuteCommandRequest {
-            cmd: "cargo".to_owned(),
+            cmd: "blang".to_owned(),
             args: args.into_iter().map(|s| s.to_owned()).collect(),
-            envs,
+            envs: HashMap::new(),
             cwd: None,
         }
     }

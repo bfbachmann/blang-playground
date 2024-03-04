@@ -1,7 +1,7 @@
 import { ThunkAction as ReduxThunkAction, UnknownAction } from '@reduxjs/toolkit';
 
 import { State } from './reducers';
-import { addCrateType, editCode } from './reducers/code';
+import { editCode } from './reducers/code';
 import {
   changeBacktrace,
   changeChannel,
@@ -12,12 +12,9 @@ import {
 import { performCompileToAssemblyOnly } from './reducers/output/assembly';
 import { performCommonExecute } from './reducers/output/execute';
 import { performGistLoad } from './reducers/output/gist';
-import { performCompileToHirOnly } from './reducers/output/hir';
 import { performCompileToLlvmIrOnly } from './reducers/output/llvmIr';
-import { performCompileToMirOnly } from './reducers/output/mir';
-import { performCompileToWasmOnly } from './reducers/output/wasm';
 import { navigateToHelp, navigateToIndex } from './reducers/page';
-import { getCrateType, runAsTest, wasmLikelyToWork } from './selectors';
+import { getCrateType } from './selectors';
 import {
   Backtrace,
   Channel,
@@ -42,44 +39,20 @@ function performAutoOnly(): ThunkAction {
   return function (dispatch, getState) {
     const state = getState();
     const crateType = getCrateType(state);
-    const tests = runAsTest(state);
 
-    return dispatch(performCommonExecute(crateType, tests));
+    return dispatch(performCommonExecute(crateType, false));
   };
 }
 
 const performExecuteOnly = (): ThunkAction => performCommonExecute('bin', false);
 const performCompileOnly = (): ThunkAction => performCommonExecute('lib', false);
-const performTestOnly = (): ThunkAction => (dispatch, getState) => {
-  const state = getState();
-  const crateType = getCrateType(state);
-  return dispatch(performCommonExecute(crateType, true));
-};
-
-const performCompileToNightlyHirOnly = (): ThunkAction => (dispatch) => {
-  dispatch(changeChannel(Channel.Nightly));
-  dispatch(performCompileToHirOnly());
-};
-
-const performCompileToCdylibWasmOnly = (): ThunkAction => (dispatch, getState) => {
-  const state = getState();
-
-  if (!wasmLikelyToWork(state)) {
-    dispatch(addCrateType('cdylib'));
-  }
-  dispatch(performCompileToWasmOnly());
-};
 
 const PRIMARY_ACTIONS: { [index in PrimaryAction]: () => ThunkAction } = {
   [PrimaryActionCore.Asm]: performCompileToAssemblyOnly,
   [PrimaryActionCore.Compile]: performCompileOnly,
   [PrimaryActionCore.Execute]: performExecuteOnly,
-  [PrimaryActionCore.Test]: performTestOnly,
   [PrimaryActionAuto.Auto]: performAutoOnly,
   [PrimaryActionCore.LlvmIr]: performCompileToLlvmIrOnly,
-  [PrimaryActionCore.Hir]: performCompileToHirOnly,
-  [PrimaryActionCore.Mir]: performCompileToMirOnly,
-  [PrimaryActionCore.Wasm]: performCompileToWasmOnly,
 };
 
 export const performPrimaryAction = (): ThunkAction => (dispatch, getState) => {
@@ -102,7 +75,6 @@ export const performCompile = performAndSwitchPrimaryAction(
   performCompileOnly,
   PrimaryActionCore.Compile,
 );
-export const performTest = performAndSwitchPrimaryAction(performTestOnly, PrimaryActionCore.Test);
 export const performCompileToAssembly = performAndSwitchPrimaryAction(
   performCompileToAssemblyOnly,
   PrimaryActionCore.Asm,
@@ -110,18 +82,6 @@ export const performCompileToAssembly = performAndSwitchPrimaryAction(
 export const performCompileToLLVM = performAndSwitchPrimaryAction(
   performCompileToLlvmIrOnly,
   PrimaryActionCore.LlvmIr,
-);
-export const performCompileToMir = performAndSwitchPrimaryAction(
-  performCompileToMirOnly,
-  PrimaryActionCore.Mir,
-);
-export const performCompileToNightlyHir = performAndSwitchPrimaryAction(
-  performCompileToNightlyHirOnly,
-  PrimaryActionCore.Hir,
-);
-export const performCompileToWasm = performAndSwitchPrimaryAction(
-  performCompileToCdylibWasmOnly,
-  PrimaryActionCore.Wasm,
 );
 
 export function indexPageLoad({

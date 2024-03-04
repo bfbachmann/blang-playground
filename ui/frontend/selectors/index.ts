@@ -38,7 +38,7 @@ const autoPrimaryActionSelector = createSelector(
   crateTypeSelector,
   hasTestsSelector,
   hasMainFunctionSelector,
-  (crateType, hasTests, hasMainFunction) => {
+  (crateType, _, hasMainFunction) => {
     if (crateType && crateType !== 'proc-macro') {
       if (crateType === 'bin') {
         return PrimaryActionCore.Execute;
@@ -46,9 +46,7 @@ const autoPrimaryActionSelector = createSelector(
         return PrimaryActionCore.Compile;
       }
     } else {
-      if (hasTests) {
-        return PrimaryActionCore.Test;
-      } else if (hasMainFunction) {
+      if (hasMainFunction) {
         return PrimaryActionCore.Execute;
       } else {
         return PrimaryActionCore.Compile;
@@ -59,7 +57,7 @@ const autoPrimaryActionSelector = createSelector(
 
 export const runAsTest = createSelector(
   autoPrimaryActionSelector,
-  primaryAction => primaryAction === PrimaryActionCore.Test,
+  _ => false,
 );
 
 export const getCrateType = createSelector(
@@ -99,10 +97,6 @@ const LABELS: { [index in PrimaryActionCore]: string } = {
   [PrimaryActionCore.Compile]: 'Build',
   [PrimaryActionCore.Execute]: 'Run',
   [PrimaryActionCore.LlvmIr]: 'Show LLVM IR',
-  [PrimaryActionCore.Hir]: 'Show HIR',
-  [PrimaryActionCore.Mir]: 'Show MIR',
-  [PrimaryActionCore.Test]: 'Test',
-  [PrimaryActionCore.Wasm]: 'Show Wasm',
 };
 
 export const getExecutionLabel = createSelector(primaryActionSelector, primaryAction => LABELS[primaryAction]);
