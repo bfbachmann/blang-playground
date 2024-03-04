@@ -1281,7 +1281,7 @@ pub enum CopyChildOutputError {
     UnableToSend { source: MultiplexingSenderError },
 
     #[snafu(display(
-        "Generated {n_total_bytes} bytes of output, exiting (640K ought to be enough for anybody). If this was not an accident, tell us more at {BYTE_LIMIT_URL}"
+        "Generated {n_total_bytes} bytes of output, exiting (640K ought to be enough for anybody)."
     ))]
     TooManyBytes { n_total_bytes: usize },
 }
