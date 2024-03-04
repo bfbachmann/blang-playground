@@ -399,29 +399,9 @@ impl CompileRequest {
         let mut args = vec!["build", "main.bl", "-o", output_path, "-f"];
 
         match self.target {
-            Assembly(flavor, _, _) => {
-                args.extend(&["--", "--emit", "asm=compilation"]);
-
-                // Enable extra assembly comments for nightly builds
-                if let Channel::Nightly = self.channel {
-                    args.push("-Z");
-                    args.push("verbose-asm");
-                }
-
-                args.push("-C");
-                match flavor {
-                    AssemblyFlavor::Att => args.push("llvm-args=-x86-asm-syntax=att"),
-                    AssemblyFlavor::Intel => args.push("llvm-args=-x86-asm-syntax=intel"),
-                }
-            }
-            LlvmIr => args.extend(&["--", "--emit", "llvm-ir=compilation"]),
-            Mir => args.extend(&["--", "--emit", "mir=compilation"]),
-            Hir => args.extend(&["--", "-Zunpretty=hir", "-o", output_path]),
-            Wasm => args.extend(&["-o", output_path]),
-        }
-        let mut envs = HashMap::new();
-        if self.backtrace {
-            envs.insert("RUST_BACKTRACE".to_owned(), "1".to_owned());
+            Assembly(_, _, _) => args.push("asm"),
+            LlvmIr => args.push("ir"),
+            _ => {},
         }
 
         ExecuteCommandRequest {
