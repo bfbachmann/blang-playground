@@ -3,8 +3,8 @@ import { PayloadAction, createSlice } from '@reduxjs/toolkit';
 import { performFormat } from './output/format';
 import { performGistLoad } from './output/gist';
 
-const initialState: string = `use "std/libc/io.bl"
-use "std/libc/proc.bl"
+const initialState: string = `use {puts}: "std/libc/io.bl"
+use {exit}: "std/libc/proc.bl"
 
 fn main() {
     puts("Hello, world!")
