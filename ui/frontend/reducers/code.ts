@@ -7,7 +7,7 @@ const initialState: string = `use {puts}: "std/libc/io.bl"
 use {exit}: "std/libc/proc.bl"
 
 fn main() {
-    puts("Hello, world!\n\0")
+    puts("Hello, world!\\n\\0")
     exit(0)
 }`;
 
