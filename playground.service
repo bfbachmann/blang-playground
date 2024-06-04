@@ -1,0 +1,16 @@
+[Unit]
+Description=Blang Playground Server
+After=network.target
+
+[Service]
+User=bfbachmann
+Group=bfbachmann
+WorkingDirectory=/home/bfbachmann/blang-playground/ui
+ExecStart=/home/bfbachmann/blang-playground/ui/target/release/ui
+Restart=always
+Environment="PLAYGROUND_UI_ADDRESS=0.0.0.0"
+Environment="PLAYGROUND_UI_PORT=5000"
+Environment="PLAYGROUND_CORS_ENABLED=true"
+
+[Install]
+WantedBy=multi-user.target
