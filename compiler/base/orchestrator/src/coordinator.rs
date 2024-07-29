@@ -1,40 +1,41 @@
-use futures::{
-    future::{BoxFuture, OptionFuture},
-    stream::BoxStream,
-    Future, FutureExt, Stream, StreamExt,
-};
-use serde::Deserialize;
-use snafu::prelude::*;
 use std::{
     collections::HashMap,
     fmt, mem, ops,
     process::Stdio,
     sync::{
-        atomic::{AtomicU64, Ordering},
         Arc,
+        atomic::{AtomicU64, Ordering},
     },
     time::Duration,
 };
+
+use futures::{
+    future::{BoxFuture, OptionFuture},
+    Future,
+    FutureExt, Stream, stream::BoxStream, StreamExt,
+};
+use serde::Deserialize;
+use snafu::prelude::*;
 use tokio::{
     join,
     process::{Child, ChildStdin, ChildStdout, Command},
     select,
-    sync::{mpsc, oneshot, OnceCell},
+    sync::{mpsc, OnceCell, oneshot},
     task::{JoinHandle, JoinSet},
     time::{self, MissedTickBehavior},
 };
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::{io::SyncIoBridge, sync::CancellationToken};
-use tracing::{info_span, instrument, trace, trace_span, warn, Instrument};
+use tracing::{info_span, instrument, Instrument, trace, trace_span, warn};
 
 use crate::{
     bincode_input_closed,
+    DropErrorDetailsExt,
     message::{
         CommandStatistics, CoordinatorMessage, DeleteFileRequest, ExecuteCommandRequest,
         ExecuteCommandResponse, JobId, Multiplexed, OneToOneResponse, ReadFileRequest,
         ReadFileResponse, SerializedError2, WorkerMessage, WriteFileRequest,
     },
-    DropErrorDetailsExt,
 };
 
 pub mod limits;
@@ -288,12 +289,12 @@ pub enum CrateType {
 }
 
 impl CrateType {
-    const MAIN_RS: &'static str = "main.bl";
-    const LIB_RS: &'static str = "src/lib.rs";
+    const MAIN_BL: &'static str = "main.bl";
+    const LIB_RS: &'static str = "src/lib.rs"; // TODO: Remove.
 
     pub(crate) fn primary_path(self) -> &'static str {
         match self {
-            CrateType::Binary => Self::MAIN_RS,
+            CrateType::Binary => Self::MAIN_BL,
             CrateType::Library(_) => Self::LIB_RS,
         }
     }
@@ -301,7 +302,7 @@ impl CrateType {
     pub(crate) fn other_path(self) -> &'static str {
         match self {
             CrateType::Binary => Self::LIB_RS,
-            CrateType::Library(_) => Self::MAIN_RS,
+            CrateType::Library(_) => Self::MAIN_BL,
         }
     }
 }
@@ -336,10 +337,13 @@ impl ExecuteRequest {
         write_primary_file_request(self.crate_type, &self.code)
     }
 
-    fn execute_cargo_request(&self) -> ExecuteCommandRequest {
+    fn execute_blang_request(&self) -> ExecuteCommandRequest {
         ExecuteCommandRequest {
             cmd: "blang".to_owned(),
-            args: ["run", "main.bl"].into_iter().map(|s| s.to_owned()).collect(),
+            args: ["run", "main.bl"]
+                .into_iter()
+                .map(|s| s.to_owned())
+                .collect(),
             envs: HashMap::new(),
             cwd: None,
         }
@@ -401,7 +405,7 @@ impl CompileRequest {
         match self.target {
             Assembly(_, _, _) => args.push("asm"),
             LlvmIr => args.push("ir"),
-            _ => {},
+            _ => {}
         }
 
         ExecuteCommandRequest {
@@ -951,7 +955,11 @@ where
 
     async fn select_channel(&self) -> Result<&Container, Error> {
         self.stable
-            .get_or_try_init(|| Container::new(self.token.clone(), &self.backend))
+            .get_or_try_init(|| {
+                let limits = self.limits.clone();
+                let token = self.token.clone();
+                Container::new(limits, token, &self.backend)
+            })
             .await
     }
 }
@@ -966,10 +974,13 @@ struct Container {
 
 impl Container {
     async fn new(
+        limits: Arc<dyn ResourceLimits>,
         token: CancellationToken,
         backend: &impl Backend,
     ) -> Result<Self> {
-        let (mut child, kill_child, stdin, stdout) = backend.run_worker_in_background()?;
+        let permit = limits.next_container().await.context(AcquirePermitSnafu)?;
+
+        let (mut child, kill_child, stdin, stdout) = backend.run_worker_in_background(&permit)?;
         let IoQueue {
             mut tasks,
             to_worker_tx,
@@ -1126,8 +1137,7 @@ impl Container {
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
 
-        let (delete_previous_main, write_main) =
-            join!(delete_previous_main, write_main);
+        let (delete_previous_main, write_main) = join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
@@ -1218,8 +1228,7 @@ impl Container {
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
 
-        let (delete_previous_main, write_main) =
-            join!(delete_previous_main, write_main);
+        let (delete_previous_main, write_main) = join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
@@ -1311,8 +1320,7 @@ impl Container {
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
 
-        let (delete_previous_main, write_main) =
-            join!(delete_previous_main, write_main);
+        let (delete_previous_main, write_main) = join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
@@ -1394,8 +1402,7 @@ impl Container {
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
 
-        let (delete_previous_main, write_main) =
-            join!(delete_previous_main, write_main);
+        let (delete_previous_main, write_main) = join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
@@ -1466,8 +1473,7 @@ impl Container {
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
 
-        let (delete_previous_main, write_main) =
-            join!(delete_previous_main, write_main);
+        let (delete_previous_main, write_main) = join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
@@ -1541,8 +1547,7 @@ impl Container {
         let delete_previous_main = self.commander.one(delete_previous_main);
         let write_main = self.commander.one(write_main);
 
-        let (delete_previous_main, write_main) =
-            join!(delete_previous_main, write_main);
+        let (delete_previous_main, write_main) = join!(delete_previous_main, write_main);
 
         delete_previous_main.context(CouldNotDeletePreviousCodeSnafu)?;
         write_main.context(CouldNotWriteCodeSnafu)?;
@@ -2226,8 +2231,9 @@ pub enum CommanderError {
 pub trait Backend {
     fn run_worker_in_background(
         &self,
+        id: impl fmt::Display,
     ) -> Result<(Child, Option<Command>, ChildStdin, ChildStdout)> {
-        let (mut start, kill) = self.prepare_worker_command();
+        let (mut start, kill) = self.prepare_worker_command(id);
 
         let mut child = start
             .stdin(Stdio::piped())
@@ -2240,15 +2246,15 @@ pub trait Backend {
         Ok((child, kill, stdin, stdout))
     }
 
-    fn prepare_worker_command(&self) -> (Command, Option<Command>);
+    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, Option<Command>);
 }
 
 impl<B> Backend for &B
 where
     B: Backend,
 {
-    fn prepare_worker_command(&self) -> (Command, Option<Command>) {
-        B::prepare_worker_command(self)
+    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, Option<Command>) {
+        B::prepare_worker_command(self, id)
     }
 }
 
@@ -2302,8 +2308,8 @@ fn basic_secure_docker_command() -> Command {
 pub struct DockerBackend(());
 
 impl Backend for DockerBackend {
-    fn prepare_worker_command(&self) -> (Command, Option<Command>) {
-        let name = self.next_name();
+    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, Option<Command>) {
+        let name = format!("playground-{id}");
 
         let mut command = basic_secure_docker_command();
         command
@@ -2368,6 +2374,9 @@ pub enum Error {
 
     #[snafu(display("Failed to send worker message through channel"))]
     UnableToSendWorkerMessage { source: mpsc::error::SendError<()> },
+
+    #[snafu(display("Could not acquire a container permit"))]
+    AcquirePermit { source: ResourceError },
 }
 
 struct IoQueue {
@@ -2378,7 +2387,7 @@ struct IoQueue {
 
 // Child stdin/out <--> messages.
 fn spawn_io_queue(stdin: ChildStdin, stdout: ChildStdout, token: CancellationToken) -> IoQueue {
-    use std::io::{prelude::*, BufReader, BufWriter};
+    use std::io::{BufReader, BufWriter, prelude::*};
 
     let mut tasks = JoinSet::new();
 
@@ -2445,7 +2454,8 @@ fn spawn_io_queue(stdin: ChildStdin, stdout: ChildStdout, token: CancellationTok
 
 #[cfg(test)]
 mod tests {
-    use assertables::*;
+    use std::{env, sync::Once};
+
     use futures::future::{join, try_join_all};
     use std::{
         env,
