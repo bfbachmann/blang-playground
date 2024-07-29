@@ -1,14 +1,19 @@
 [Unit]
-Description=The Blang Playground
+Description=Blang Playground Server
+After=network.target
 
 [Service]
+User=playground
+Group=playground
+WorkingDirectory=/shared/blang-playground/ui
+ExecStart=/shared/blang-playground/ui/target/release/ui
+Restart=always
+Environment="PLAYGROUND_UI_ADDRESS=127.0.0.1"
+Environment="PLAYGROUND_UI_PORT=5000"
+Environment="PLAYGROUND_CORS_ENABLED=true"
+Environment="PLAYGROUND_UI_ROOT=/shared/blang-playground/ui/frontend/build/"
 Environment=TMPDIR=/mnt/playground
 Environment=RUST_LOG=info
-Environment=PLAYGROUND_UI_ADDRESS=0.0.0.0
-Environment=PLAYGROUND_UI_PORT=8080
-Environment=PLAYGROUND_UI_ROOT=/home/ubuntu/playground-artifacts/build
-Environment=PLAYGROUND_CORS_ENABLED=1
 
-WorkingDirectory=/home/ubuntu/playground-artifacts
-
-ExecStart=/home/ubuntu/playground-artifacts/ui
+[Install]
+WantedBy=multi-user.target
