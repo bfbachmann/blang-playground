@@ -1267,8 +1267,6 @@ async fn copy_child_output(
     Ok(())
 }
 
-const BYTE_LIMIT_URL: &str = "https://github.com/rust-lang/rust-playground/discussions/1027";
-
 #[derive(Debug, Snafu)]
 #[snafu(module)]
 pub enum CopyChildOutputError {
