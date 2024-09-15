@@ -54,7 +54,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- \
 
 # Download and install the Blang compiler.
 RUN git clone https://github.com/bfbachmann/blang.git
-RUN cd blang && cargo install --path . --locked
+RUN cd blang && mv std /playground/std && cargo install --path . --locked
 
 COPY --chown=playground entrypoint.sh /playground/tools/
 
