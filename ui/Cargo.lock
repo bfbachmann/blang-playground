@@ -1188,7 +1188,6 @@ dependencies = [
  "futures",
  "libc",
  "mach2",
- "modify-cargo-toml",
  "procfs",
  "serde",
  "serde_json",
