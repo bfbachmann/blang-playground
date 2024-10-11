@@ -3,16 +3,16 @@ use std::{
     fmt, mem, ops,
     process::Stdio,
     sync::{
-        Arc,
         atomic::{AtomicU64, Ordering},
+        Arc,
     },
     time::Duration,
 };
 
 use futures::{
     future::{BoxFuture, OptionFuture},
-    Future,
-    FutureExt, Stream, stream::BoxStream, StreamExt,
+    stream::BoxStream,
+    Future, FutureExt, Stream, StreamExt,
 };
 use serde::Deserialize;
 use snafu::prelude::*;
@@ -20,7 +20,7 @@ use tokio::{
     join,
     process::{Child, ChildStdin, ChildStdout, Command},
     select,
-    sync::{mpsc, OnceCell, oneshot},
+    sync::{mpsc, oneshot, OnceCell},
     task::{JoinHandle, JoinSet},
     time::{self, MissedTickBehavior},
 };
@@ -30,12 +30,12 @@ use tracing::{error, info_span, instrument, trace, trace_span, warn, Instrument}
 
 use crate::{
     bincode_input_closed,
-    DropErrorDetailsExt,
     message::{
         CommandStatistics, CoordinatorMessage, DeleteFileRequest, ExecuteCommandRequest,
         ExecuteCommandResponse, JobId, Multiplexed, OneToOneResponse, ReadFileRequest,
         ReadFileResponse, SerializedError2, WorkerMessage, WriteFileRequest,
     },
+    DropErrorDetailsExt,
 };
 
 pub mod limits;
@@ -1701,7 +1701,6 @@ impl Container {
             permit,
             task,
             mut kill_child,
-            modify_cargo_toml,
             commander,
         } = self;
         drop(commander);
@@ -2285,7 +2284,7 @@ pub trait Backend {
     fn run_worker_in_background(
         &self,
         id: impl fmt::Display,
-    ) -> Result<(Child, Option<Command>, ChildStdin, ChildStdout)> {
+    ) -> Result<(Child, TerminateContainer, ChildStdin, ChildStdout)> {
         let (mut start, kill) = self.prepare_worker_command(id);
 
         let mut child = start
@@ -2306,8 +2305,8 @@ impl<B> Backend for &B
 where
     B: Backend,
 {
-    fn prepare_worker_command(&self) -> (Command, TerminateContainer) {
-        B::prepare_worker_command(self)
+    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, TerminateContainer) {
+        B::prepare_worker_command(self, id)
     }
 }
 
@@ -2441,7 +2440,7 @@ struct IoQueue {
 
 // Child stdin/out <--> messages.
 fn spawn_io_queue(stdin: ChildStdin, stdout: ChildStdout, token: CancellationToken) -> IoQueue {
-    use std::io::{BufReader, BufWriter, prelude::*};
+    use std::io::{prelude::*, BufReader, BufWriter};
 
     let mut tasks = JoinSet::new();
 
