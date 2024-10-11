@@ -1,6 +1,6 @@
 #syntax=docker/dockerfile:1.5
 
-FROM ubuntu:20.04 as toolchain
+FROM ubuntu:24.04 as toolchain
 
 ENV DEBIAN_FRONTEND="noninteractive"
 ENV LLVM_SYS_160_PREFIX=/usr/lib/llvm-16

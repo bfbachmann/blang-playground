@@ -5,7 +5,6 @@
 
 .name {
   flex: 1;
-  font-size: 13px;
 }
 
 .notDefault {
@@ -20,6 +19,15 @@
 
 .select {
   width: 100%;
+  background: var(--button-secondary-bg-color);
+  border-color: var(--button-secondary-border-color);
+  color: var(--button-secondary-color);
+
+  & option {
+    background-color: var(--button-secondary-bg-color-top);
+    border-color: var(--button-secondary-border-color);
+    color: var(--button-secondary-color);
+  }
 }
 
 .toggle {
@@ -37,7 +45,6 @@
     padding: 0 1em;
     color: #777;
     font-weight: 600;
-    font-size: 11px;
     text-align: center;
     text-transform: uppercase;
 

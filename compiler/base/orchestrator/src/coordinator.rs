@@ -11,8 +11,8 @@ use std::{
 
 use futures::{
     future::{BoxFuture, OptionFuture},
-    Future,
-    FutureExt, Stream, stream::BoxStream, StreamExt,
+    stream::BoxStream,
+    Future, FutureExt, Stream, StreamExt,
 };
 use serde::Deserialize;
 use snafu::prelude::*;
@@ -26,7 +26,7 @@ use tokio::{
 };
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::{io::SyncIoBridge, sync::CancellationToken};
-use tracing::{info_span, instrument, Instrument, trace, trace_span, warn};
+use tracing::{error, info_span, instrument, trace, trace_span, warn, Instrument};
 
 use crate::{
     bincode_input_closed,
@@ -968,7 +968,7 @@ where
 struct Container {
     permit: Box<dyn ContainerPermit>,
     task: JoinHandle<Result<()>>,
-    kill_child: Option<Command>,
+    kill_child: TerminateContainer,
     commander: Commander,
 }
 
@@ -1700,22 +1700,12 @@ impl Container {
         let Self {
             permit,
             task,
-            kill_child,
+            mut kill_child,
             commander,
         } = self;
         drop(commander);
 
-        if let Some(mut kill_child) = kill_child {
-            // We don't care if the command itself succeeds or not; it
-            // may already be dead!
-            let _ = kill_child
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .await
-                .context(KillWorkerSnafu)?;
-        }
+        kill_child.terminate_now().await?;
 
         let r = task.await;
         drop(permit);
@@ -2228,11 +2218,73 @@ pub enum CommanderError {
     WorkerOperationFailed { source: SerializedError2 },
 }
 
+#[derive(Debug)]
+pub struct TerminateContainer(Option<(String, Command)>);
+
+impl TerminateContainer {
+    pub fn new(name: String, command: Command) -> Self {
+        Self(Some((name, command)))
+    }
+
+    pub fn none() -> Self {
+        Self(None)
+    }
+
+    async fn terminate_now(&mut self) -> Result<(), TerminateContainerError> {
+        use terminate_container_error::*;
+
+        if let Some((name, mut kill_child)) = self.0.take() {
+            let o = kill_child
+                .output()
+                .await
+                .context(TerminateContainerSnafu { name: &name })?;
+            Self::report_failure(name, o);
+        }
+
+        Ok(())
+    }
+
+    fn report_failure(name: String, s: std::process::Output) {
+        // We generally don't care if the command itself succeeds or
+        // not; the container may already be dead! However, let's log
+        // it in an attempt to debug cases where there are more
+        // containers running than we expect.
+
+        if !s.status.success() {
+            let code = s.status.code();
+            // FUTURE: use `_owned`
+            let stdout = String::from_utf8_lossy(&s.stdout);
+            let stderr = String::from_utf8_lossy(&s.stderr);
+
+            error!(?code, %stdout, %stderr, %name, "Killing the container failed");
+        }
+    }
+}
+
+impl Drop for TerminateContainer {
+    fn drop(&mut self) {
+        if let Some((name, mut kill_child)) = self.0.take() {
+            match kill_child.as_std_mut().output() {
+                Ok(o) => Self::report_failure(name, o),
+                Err(e) => error!("Unable to kill container {name} while dropping: {e}"),
+            }
+        }
+    }
+}
+
+#[derive(Debug, Snafu)]
+#[snafu(module)]
+#[snafu(display("Unable to kill the Docker container {name}"))]
+pub struct TerminateContainerError {
+    name: String,
+    source: std::io::Error,
+}
+
 pub trait Backend {
     fn run_worker_in_background(
         &self,
         id: impl fmt::Display,
-    ) -> Result<(Child, Option<Command>, ChildStdin, ChildStdout)> {
+    ) -> Result<(Child, TerminateContainer, ChildStdin, ChildStdout)> {
         let (mut start, kill) = self.prepare_worker_command(id);
 
         let mut child = start
@@ -2246,14 +2298,14 @@ pub trait Backend {
         Ok((child, kill, stdin, stdout))
     }
 
-    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, Option<Command>);
+    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, TerminateContainer);
 }
 
 impl<B> Backend for &B
 where
     B: Backend,
 {
-    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, Option<Command>) {
+    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, TerminateContainer) {
         B::prepare_worker_command(self, id)
     }
 }
@@ -2308,7 +2360,7 @@ fn basic_secure_docker_command() -> Command {
 pub struct DockerBackend(());
 
 impl Backend for DockerBackend {
-    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, Option<Command>) {
+    fn prepare_worker_command(&self, id: impl fmt::Display) -> (Command, TerminateContainer) {
         let name = format!("playground-{id}");
 
         let mut command = basic_secure_docker_command();
@@ -2326,9 +2378,10 @@ impl Backend for DockerBackend {
             .arg("/playground");
 
         let mut kill = Command::new("docker");
-        kill.arg("kill").args(["--signal", "KILL"]).arg(name);
+        kill.arg("kill").args(["--signal", "KILL"]).arg(&name);
+        let kill = TerminateContainer::new(name, kill);
 
-        (command, Some(kill))
+        (command, kill)
     }
 }
 
@@ -2351,8 +2404,8 @@ pub enum Error {
     #[snafu(display("The IO queue task panicked"))]
     IoQueuePanicked { source: tokio::task::JoinError },
 
-    #[snafu(display("Unable to kill the child process"))]
-    KillWorker { source: std::io::Error },
+    #[snafu(transparent)]
+    KillWorker { source: TerminateContainerError },
 
     #[snafu(display("The container task panicked"))]
     ContainerTaskPanicked { source: tokio::task::JoinError },
@@ -2520,14 +2573,14 @@ mod tests {
     }
 
     impl Backend for TestBackend {
-        fn prepare_worker_command(&self) -> (Command, Option<Command>) {
+        fn prepare_worker_command(&self) -> (Command, TerminateContainer) {
             let channel_dir = self.project_dir.path().join(channel.to_str());
 
             let mut command = Command::new("./target/debug/worker");
             command.env("RUSTUP_TOOLCHAIN", channel.to_str());
             command.arg(channel_dir);
 
-            (command, None)
+            (command, TerminateContainer::none())
         }
     }
 
@@ -2639,7 +2692,7 @@ mod tests {
 
             coordinator.shutdown().await?;
 
-            Ok(())
+            Ok::<_, Error>(())
         });
 
         try_join_all(tests).with_timeout().await?;
@@ -2685,7 +2738,7 @@ mod tests {
 
                     coordinator.shutdown().await?;
 
-                    Ok(())
+                    Ok::<_, Error>(())
                 },
             )
         });
@@ -2724,7 +2777,7 @@ mod tests {
 
             coordinator.shutdown().await?;
 
-            Ok(())
+            Ok::<_, Error>(())
         });
 
         try_join_all(tests).with_timeout().await?;
@@ -2754,7 +2807,7 @@ mod tests {
 
             coordinator.shutdown().await?;
 
-            Ok(())
+            Ok::<_, Error>(())
         });
 
         try_join_all(tests).with_timeout().await?;
@@ -2791,7 +2844,7 @@ mod tests {
 
             coordinator.shutdown().await?;
 
-            Ok(())
+            Ok::<_, Error>(())
         });
 
         try_join_all(tests).with_timeout().await?;
@@ -3514,7 +3567,7 @@ mod tests {
 
                     coordinator.shutdown().await?;
 
-                    Ok(())
+                    Ok::<_, Error>(())
                 },
             )
         });

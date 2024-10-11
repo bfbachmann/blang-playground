@@ -68,6 +68,12 @@ export enum Orientation {
   Vertical = 'vertical',
 }
 
+export enum Theme {
+  Light = 'light',
+  Dark = 'dark',
+  System = 'system',
+}
+
 export enum AssemblyFlavor {
   Att = 'att',
   Intel = 'intel',
@@ -155,5 +161,6 @@ export enum Focus {
 }
 
 export enum Notification {
+  DarkMode = 'dark-mode',
   RustSurvey2023 = 'rust-survey-2023',
 }
