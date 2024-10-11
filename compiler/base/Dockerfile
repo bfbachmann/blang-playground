@@ -20,10 +20,9 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     zlib1g-dev \
     libzstd-dev \
+    llvm-16 \
+    libpolly-16-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Install LLVM 16
-RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 16 all
 
 # Add a non-root playground user
 RUN useradd -m playground -d /playground
