@@ -31,7 +31,7 @@
   --link-color-visited: #551a8b;
 
   /* Background */
-  --background-color: #e1e1db;
+  --background-color: #fff;
   --background-color-high-contrast: var(--positive-luminance);
 
   /* Code */
