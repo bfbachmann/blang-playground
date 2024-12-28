@@ -21,10 +21,9 @@ cd frontend
 pnpm build:production
 
 # Copy assets to shared path
-cp -r $SOURCE_PATH $DEST_PATH
-
-# Restart service
 echo -e "\n\n===> Restarting service...\n"
-sudo systemctl restart blang-playground
+sudo systemctl stop blang-playground
+cp -r $SOURCE_PATH $DEST_PATH
+sudo systemctl start blang-playground
 
 echo -e "\n\n===> DONE\n"
