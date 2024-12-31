@@ -7,7 +7,7 @@ const initialState: string = `use "std/fmt.bl" {println}
 use "std/libc/proc.bl" {exit}
 
 fn main() {
-    println[str](&"Hello, world!")
+    println(&"Hello, world!")
     exit(0)
 }`;
 
