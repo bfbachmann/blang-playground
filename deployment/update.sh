@@ -23,6 +23,7 @@ pnpm build:production
 # Copy assets to shared path
 echo -e "\n\n===> Restarting service...\n"
 sudo systemctl stop blang-playground
+rm -rf $DEST_PATH
 cp -r $SOURCE_PATH $DEST_PATH
 sudo systemctl start blang-playground
 
