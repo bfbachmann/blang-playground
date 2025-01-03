@@ -3,7 +3,7 @@
 FROM ubuntu:24.04 as toolchain
 
 ENV DEBIAN_FRONTEND="noninteractive"
-ENV LLVM_SYS_160_PREFIX=/usr/lib/llvm-16
+ENV LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
 
 # `build-essential` and `file` are needed for backtrace-sys
 RUN apt-get update && apt-get install -y \
@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     zlib1g-dev \
     libzstd-dev \
-    llvm-16 \
-    libpolly-16-dev \
+    llvm-18 \
+    libpolly-18-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Add a non-root playground user
