@@ -48,7 +48,6 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     -y \
     --profile minimal \
     --default-toolchain stable \
-    --target wasm32-unknown-unknown \
     --component rust-src
 
 # Download and install the Blang compiler.
