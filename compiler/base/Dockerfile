@@ -50,10 +50,6 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- \
     --default-toolchain stable \
     --component rust-src
 
-# Download and install the Blang compiler.
-RUN git clone https://github.com/bfbachmann/blang.git
-RUN cd blang && mv std /playground/std && cargo install --path . --locked
-
 COPY --chown=playground entrypoint.sh /playground/tools/
 
 # Fetch all the crate source files
@@ -66,29 +62,10 @@ COPY --chown=playground Cargo.toml /playground/Cargo.toml
 COPY --chown=playground crate-information.json /playground/crate-information.json
 RUN cargo fetch
 
-# Set up cargo-chef for faster builds
-
-FROM toolchain as chef-available
-
-RUN cargo install --locked cargo-chef
+# Build the orchestrator
+FROM toolchain as build-orchestrator
 
 WORKDIR /orchestrator
-
-# Prepare the orchestrator's dependencies
-
-FROM chef-available as prepare-orchestrator
-
-COPY --chown=playground asm-cleanup /asm-cleanup
-COPY --chown=playground orchestrator /orchestrator
-RUN cargo chef prepare
-
-# Build the orchestrator
-
-FROM chef-available as build-orchestrator
-
-COPY --chown=playground asm-cleanup /asm-cleanup
-COPY --chown=playground --from=prepare-orchestrator /orchestrator/recipe.json /orchestrator/recipe.json
-RUN cargo chef cook --locked --release
 
 COPY --chown=playground asm-cleanup /asm-cleanup
 COPY --chown=playground orchestrator /orchestrator
@@ -103,6 +80,13 @@ RUN cargo build --release
 RUN rm src/*.rs
 
 COPY --from=build-orchestrator /playground/.cargo/bin/worker /playground/.cargo/bin/worker
-COPY --from=build-orchestrator /playground/.cargo/bin/blang /playground/.cargo/bin/blang
+
+FROM build-orchestrator as build-blang
+
+# Download and install the Blang compiler.
+RUN git clone https://github.com/bfbachmann/blang.git /tmp/blang \
+    && cd /tmp/blang \
+    && mv std /playground/std \
+    && cargo install --path . --locked
 
 ENTRYPOINT ["/playground/tools/entrypoint.sh"]
