@@ -3,12 +3,12 @@ import { PayloadAction, createSlice } from '@reduxjs/toolkit';
 import { performFormat } from './output/format';
 import { performGistLoad } from './output/gist';
 
-const initialState: string = `use "std/fmt.bl" {println}
-use "std/libc/proc.bl" {exit}
+const initialState: string = `use "std/fmt" {println}
+use "std/libc" @libc
 
 fn main() {
     println(&"Hello, world!")
-    exit(0)
+    @libc.exit(0)
 }`;
 
 const slice = createSlice({
