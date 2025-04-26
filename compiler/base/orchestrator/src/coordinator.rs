@@ -340,7 +340,7 @@ impl ExecuteRequest {
     fn execute_blang_request(&self) -> ExecuteCommandRequest {
         ExecuteCommandRequest {
             cmd: "blang".to_owned(),
-            args: ["run", "main.bl"]
+            args: ["run", "main"]
                 .into_iter()
                 .map(|s| s.to_owned())
                 .collect(),
