@@ -289,7 +289,7 @@ pub enum CrateType {
 }
 
 impl CrateType {
-    const MAIN_BL: &'static str = "main";
+    const MAIN_BL: &'static str = "main.bl";
     const LIB_RS: &'static str = "src/lib.rs"; // TODO: Remove.
 
     pub(crate) fn primary_path(self) -> &'static str {
