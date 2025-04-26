@@ -3,7 +3,9 @@ import { PayloadAction, createSlice } from '@reduxjs/toolkit';
 import { performFormat } from './output/format';
 import { performGistLoad } from './output/gist';
 
-const initialState: string = `use "std/fmt" {println}
+const initialState: string = `mod main
+
+use "std/fmt" {println}
 use "std/libc" @libc
 
 fn main() {
