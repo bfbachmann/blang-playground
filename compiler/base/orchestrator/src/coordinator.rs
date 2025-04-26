@@ -289,7 +289,7 @@ pub enum CrateType {
 }
 
 impl CrateType {
-    const MAIN_BL: &'static str = "main.bl";
+    const MAIN_BL: &'static str = "main";
     const LIB_RS: &'static str = "src/lib.rs"; // TODO: Remove.
 
     pub(crate) fn primary_path(self) -> &'static str {
@@ -400,7 +400,7 @@ impl CompileRequest {
     pub(crate) fn execute_blang_request(&self, output_path: &str) -> ExecuteCommandRequest {
         use CompileTarget::*;
 
-        let mut args = vec!["build", "main.bl", "-o", output_path, "-f"];
+        let mut args = vec!["build", "main", "-o", output_path, "-f"];
 
         match self.target {
             Assembly(_, _, _) => args.push("asm"),
