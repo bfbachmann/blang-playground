@@ -9,7 +9,7 @@ use "std/fmt" {println}
 use "std/libc" @libc
 
 fn main() {
-    println(&"Hello, world!")
+    println("Hello, world!")
     @libc.exit(0)
 }`;
 
