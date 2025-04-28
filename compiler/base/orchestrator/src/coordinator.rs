@@ -400,13 +400,12 @@ impl CompileRequest {
     pub(crate) fn execute_blang_request(&self, output_path: &str) -> ExecuteCommandRequest {
         use CompileTarget::*;
 
-        let mut args = vec!["build", "main", "-o", output_path, "-f"];
-
-        match self.target {
-            Assembly(_, _, _) => args.push("asm"),
-            LlvmIr => args.push("ir"),
-            _ => {}
-        }
+        let format = match self.target {
+            Assembly(_, _, _) => "asm",
+            LlvmIr => "ir",
+            _ => "exe",
+        };
+        let args = vec!["build", "main", "-o", output_path, "-f", format];
 
         ExecuteCommandRequest {
             cmd: "blang".to_owned(),
