@@ -36,7 +36,7 @@ RUN /playground/attach_notice.sh /playground/security_notice.txt /etc/passwd && 
 
 USER playground
 ENV USER=playground
-ENV PATH=/playground/.cargo/bin:$PATH
+ENV PATH=/playground/.cargo/bin:$LLVM_SYS_180_PREFIX/bin:$PATH
 WORKDIR /playground
 
 # Ensure that we are using the latest stable version of rustup.
