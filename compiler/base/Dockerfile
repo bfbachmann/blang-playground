@@ -2,8 +2,10 @@
 
 FROM ubuntu:24.04 as toolchain
 
+ARG LLVM_VERSION=21
+
 ENV DEBIAN_FRONTEND="noninteractive"
-ENV LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
+ENV LLVM_SYS_211_PREFIX=/usr/lib/llvm-$LLVM_VERSION
 
 # `build-essential` and `file` are needed for backtrace-sys
 RUN apt-get update && apt-get install -y \
@@ -20,9 +22,10 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     zlib1g-dev \
     libzstd-dev \
-    llvm-18 \
-    libpolly-18-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install LLVM
+RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $LLVM_VERSION all
 
 # Add a non-root playground user
 RUN useradd -m playground -d /playground
@@ -36,7 +39,7 @@ RUN /playground/attach_notice.sh /playground/security_notice.txt /etc/passwd && 
 
 USER playground
 ENV USER=playground
-ENV PATH=/playground/.cargo/bin:$LLVM_SYS_180_PREFIX/bin:$PATH
+ENV PATH=/playground/.cargo/bin:$LLVM_SYS_211_PREFIX/bin:$PATH
 WORKDIR /playground
 
 # Ensure that we are using the latest stable version of rustup.
