@@ -7,7 +7,8 @@ ARG LLVM_VERSION=21
 ENV DEBIAN_FRONTEND="noninteractive"
 ENV LLVM_SYS_211_PREFIX=/usr/lib/llvm-$LLVM_VERSION
 
-# `build-essential` and `file` are needed for backtrace-sys
+# `build-essential` and `file` are needed for backtrace-sys.
+# `libgc-dev` is needed for Blang GC.
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
@@ -22,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     zlib1g-dev \
     libzstd-dev \
+    libgc-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install LLVM
